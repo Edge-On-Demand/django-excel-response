@@ -1,19 +1,12 @@
-from __future__ import absolute_import, unicode_literals
-
 import csv
+import io
 
-import django
-import six
-from django.http.response import HttpResponse
 from openpyxl import Workbook
+from openpyxl.cell import WriteOnlyCell
 from openpyxl.writer.excel import save_virtual_workbook
-from openpyxl.writer.write_only import WriteOnlyCell
 
-
-if django.VERSION >= (1, 9):
-    from django.db.models.query import QuerySet
-else:
-    from django.db.models.query import QuerySet, ValuesQuerySet
+from django.db.models.query import QuerySet
+from django.http.response import HttpResponse
 
 
 ROW_LIMIT = 1048576
@@ -24,7 +17,6 @@ class ExcelResponse(HttpResponse):
     """
     This class provides an HTTP Response in the form of an Excel spreadsheet, or CSV file.
     """
-
     def __init__(self, data, output_filename='excel_data', worksheet_name=None, force_csv=False, header_font=None,
                  data_font=None, guess_types=True, *args, **kwargs):
         # We do not initialize this with streaming_content, as that gets generated when needed
@@ -50,9 +42,6 @@ class ExcelResponse(HttpResponse):
             workbook = self._serialize_list(value)
         elif isinstance(value, QuerySet):
             workbook = self._serialize_queryset(value)
-        if django.VERSION < (1, 9):
-            if isinstance(value, ValuesQuerySet):
-                workbook = self._serialize_values_queryset(value)
         if workbook is None:
             raise ValueError('ExcelResponse accepts the following data types: list, dict, QuerySet, ValuesQuerySet')
 
@@ -74,9 +63,9 @@ class ExcelResponse(HttpResponse):
             headers = data[0]
         if len(data) > ROW_LIMIT or len(headers) > COL_LIMIT or self.force_csv:
             self.force_csv = True
-            workbook = six.StringIO()
-            csvwriter = csv.writer(workbook, dialect='excel')
-            append = getattr(csvwriter, 'writerow')
+            workbook = io.StringIO()
+            csv_writer = csv.writer(workbook, dialect='excel')
+            append = getattr(csv_writer, 'writerow')
             write_header = append
         else:
             workbook = Workbook(write_only=True)
